@@ -270,11 +270,214 @@ const aiFeatures = [
   },
 ] as const;
 
-const allFeatures = [...features, ...aiFeatures];
+const supplementalFeatures = [
+  {
+    slug: "agent-policy-registry",
+    title: "Agent Policy Registry",
+    href: "/agent-policy-registry",
+    category: "Governance",
+    icon: ShieldCheck,
+    summary: "Agent Policy Registry workspace for approval routing, policy controls, ownership, exceptions, audit evidence, and management signoff in AI Agent Governance Control Tower.",
+    bullets: ["Agent Policy Registry queue","Subfeature work items","Audit-ready output"],
+    metrics: [
+      { label: "Agent Policy Registry", value: "90", note: 'Active records' },
+      { label: 'Exceptions', value: "3", note: 'Need review' },
+      { label: 'Due Soon', value: "5", note: 'Next 14 days' },
+    ],
+  },
+  {
+    slug: "deployment-approval-board",
+    title: "Deployment Approval Board",
+    href: "/deployment-approval-board",
+    category: "Governance",
+    icon: Workflow,
+    summary: "Deployment Approval Board workspace for approval routing, policy controls, ownership, exceptions, audit evidence, and management signoff in AI Agent Governance Control Tower.",
+    bullets: ["Deployment Approval Board queue","Subfeature work items","Audit-ready output"],
+    metrics: [
+      { label: "Deployment Approval Board", value: "99", note: 'Active records' },
+      { label: 'Exceptions', value: "4", note: 'Need review' },
+      { label: 'Due Soon', value: "6", note: 'Next 14 days' },
+    ],
+  },
+  {
+    slug: "tool-risk-matrix",
+    title: "Tool Risk Matrix",
+    href: "/tool-risk-matrix",
+    category: "Risk",
+    icon: BarChart3,
+    summary: "Tool Risk Matrix workspace for risk scoring, exception review, mitigation tracking, escalation ownership, and trend analytics in AI Agent Governance Control Tower.",
+    bullets: ["Tool Risk Matrix queue","Subfeature work items","Audit-ready output"],
+    metrics: [
+      { label: "Tool Risk Matrix", value: "108", note: 'Active records' },
+      { label: 'Exceptions', value: "5", note: 'Need review' },
+      { label: 'Due Soon', value: "7", note: 'Next 14 days' },
+    ],
+  },
+  {
+    slug: "human-override-console",
+    title: "Human Override Console",
+    href: "/human-override-console",
+    category: "Operations",
+    icon: ClipboardList,
+    summary: "Human Override Console workspace for intake queues, assignments, SLA tracking, exception handling, stakeholder updates, and closeout evidence in AI Agent Governance Control Tower.",
+    bullets: ["Human Override Console queue","Subfeature work items","Audit-ready output"],
+    metrics: [
+      { label: "Human Override Console", value: "117", note: 'Active records' },
+      { label: 'Exceptions', value: "6", note: 'Need review' },
+      { label: 'Due Soon', value: "8", note: 'Next 14 days' },
+    ],
+  },
+  {
+    slug: "agent-audit-evidence",
+    title: "Agent Audit Evidence",
+    href: "/agent-audit-evidence",
+    category: "Compliance",
+    icon: CalendarCheck,
+    summary: "Agent Audit Evidence workspace for regulatory obligations, control checks, evidence packets, deadlines, and audit-ready exports in AI Agent Governance Control Tower.",
+    bullets: ["Agent Audit Evidence queue","Subfeature work items","Audit-ready output"],
+    metrics: [
+      { label: "Agent Audit Evidence", value: "126", note: 'Active records' },
+      { label: 'Exceptions', value: "7", note: 'Need review' },
+      { label: 'Due Soon', value: "9", note: 'Next 14 days' },
+    ],
+  },
+  {
+    slug: "exception-waivers",
+    title: "Exception Waivers",
+    href: "/exception-waivers",
+    category: "Governance",
+    icon: PackageCheck,
+    summary: "Exception Waivers workspace for approval routing, policy controls, ownership, exceptions, audit evidence, and management signoff in AI Agent Governance Control Tower.",
+    bullets: ["Exception Waivers queue","Subfeature work items","Audit-ready output"],
+    metrics: [
+      { label: "Exception Waivers", value: "135", note: 'Active records' },
+      { label: 'Exceptions', value: "3", note: 'Need review' },
+      { label: 'Due Soon', value: "10", note: 'Next 14 days' },
+    ],
+  },
+  {
+    slug: "kill-switch-readiness",
+    title: "Kill Switch Readiness",
+    href: "/kill-switch-readiness",
+    category: "Reliability",
+    icon: Activity,
+    summary: "Kill Switch Readiness workspace for reliability signals, incident review, root cause, corrective actions, and operational readiness in AI Agent Governance Control Tower.",
+    bullets: ["Kill Switch Readiness queue","Subfeature work items","Audit-ready output"],
+    metrics: [
+      { label: "Kill Switch Readiness", value: "144", note: 'Active records' },
+      { label: 'Exceptions', value: "4", note: 'Need review' },
+      { label: 'Due Soon', value: "11", note: 'Next 14 days' },
+    ],
+  }
+] as const;
+
+const productionPlatformFeatures = [
+  {
+    slug: "enterprise-identity-access",
+    title: "Enterprise Identity & Access",
+    href: "/enterprise-identity-access",
+    category: "Production Platform",
+    icon: ShieldCheck,
+    summary: "Enterprise Identity & Access workspace for domain workflows, approvals, evidence, and reporting in AI Agent Governance Control Tower.",
+    bullets: ["Production controls","Evidence tracking","Launch readiness"],
+    metrics: [
+      { label: "Enterprise Identity & Access", value: "90", note: 'Active records' },
+      { label: 'Exceptions', value: "3", note: 'Need review' },
+      { label: 'Due Soon', value: "5", note: 'Next 14 days' },
+    ],
+  },
+  {
+    slug: "connector-operations-center",
+    title: "Connector Operations Center",
+    href: "/connector-operations-center",
+    category: "Production Platform",
+    icon: Workflow,
+    summary: "Connector Operations Center workspace for domain workflows, approvals, evidence, and reporting in AI Agent Governance Control Tower.",
+    bullets: ["Production controls","Evidence tracking","Launch readiness"],
+    metrics: [
+      { label: "Connector Operations Center", value: "99", note: 'Active records' },
+      { label: 'Exceptions', value: "4", note: 'Need review' },
+      { label: 'Due Soon', value: "6", note: 'Next 14 days' },
+    ],
+  },
+  {
+    slug: "audit-export-center",
+    title: "Audit Export Center",
+    href: "/audit-export-center",
+    category: "Production Platform",
+    icon: BarChart3,
+    summary: "Audit Export Center workspace for domain workflows, approvals, evidence, and reporting in AI Agent Governance Control Tower.",
+    bullets: ["Production controls","Evidence tracking","Launch readiness"],
+    metrics: [
+      { label: "Audit Export Center", value: "108", note: 'Active records' },
+      { label: 'Exceptions', value: "5", note: 'Need review' },
+      { label: 'Due Soon', value: "7", note: 'Next 14 days' },
+    ],
+  },
+  {
+    slug: "notification-delivery-ledger",
+    title: "Notification Delivery Ledger",
+    href: "/notification-delivery-ledger",
+    category: "Production Platform",
+    icon: ClipboardList,
+    summary: "Notification Delivery Ledger workspace for domain workflows, approvals, evidence, and reporting in AI Agent Governance Control Tower.",
+    bullets: ["Production controls","Evidence tracking","Launch readiness"],
+    metrics: [
+      { label: "Notification Delivery Ledger", value: "117", note: 'Active records' },
+      { label: 'Exceptions', value: "6", note: 'Need review' },
+      { label: 'Due Soon', value: "8", note: 'Next 14 days' },
+    ],
+  },
+  {
+    slug: "observability-runbooks",
+    title: "Observability & Runbooks",
+    href: "/observability-runbooks",
+    category: "Production Platform",
+    icon: CalendarCheck,
+    summary: "Observability & Runbooks workspace for domain workflows, approvals, evidence, and reporting in AI Agent Governance Control Tower.",
+    bullets: ["Production controls","Evidence tracking","Launch readiness"],
+    metrics: [
+      { label: "Observability & Runbooks", value: "126", note: 'Active records' },
+      { label: 'Exceptions', value: "7", note: 'Need review' },
+      { label: 'Due Soon', value: "9", note: 'Next 14 days' },
+    ],
+  },
+  {
+    slug: "release-test-harness",
+    title: "Release Test Harness",
+    href: "/release-test-harness",
+    category: "Production Platform",
+    icon: PackageCheck,
+    summary: "Release Test Harness workspace for domain workflows, approvals, evidence, and reporting in AI Agent Governance Control Tower.",
+    bullets: ["Production controls","Evidence tracking","Launch readiness"],
+    metrics: [
+      { label: "Release Test Harness", value: "135", note: 'Active records' },
+      { label: 'Exceptions', value: "3", note: 'Need review' },
+      { label: 'Due Soon', value: "10", note: 'Next 14 days' },
+    ],
+  },
+  {
+    slug: "production-gap-workspace",
+    title: "Production Gap Workspace",
+    href: "/production-gap-workspace",
+    category: "Production Platform",
+    icon: Activity,
+    summary: "Production Gap Workspace workspace for domain workflows, approvals, evidence, and reporting in AI Agent Governance Control Tower.",
+    bullets: ["Production controls","Evidence tracking","Launch readiness"],
+    metrics: [
+      { label: "Production Gap Workspace", value: "144", note: 'Active records' },
+      { label: 'Exceptions', value: "4", note: 'Need review' },
+      { label: 'Due Soon', value: "11", note: 'Next 14 days' },
+    ],
+  }
+] as const;
+
+const allFeatures = [...features, ...supplementalFeatures, ...productionPlatformFeatures, ...aiFeatures];
 
 export const primaryNav: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'All Features', href: '/features', icon: Blocks },
+  { label: 'Production Readiness', href: '/production-readiness', icon: ShieldCheck },
   { label: 'Documents', href: '/documents', icon: Files },
   { label: 'Source Tables', href: '/source-tables', icon: Database },
   { label: 'Profiles', href: '/profiles', icon: UserRound },
@@ -284,6 +487,8 @@ export const featureNav: NavItem[] = allFeatures.map((feature) => ({ label: feat
 export const featureCatalog: FeatureDefinition[] = allFeatures.map((feature) => ({ title: feature.title, href: feature.href, category: feature.category, summary: feature.summary, bullets: [...feature.bullets] }));
 
 export const featureFamilies = [
+  { name: 'Production Platform Controls', features: ['Enterprise Identity & Access', 'Connector Operations Center', 'Audit Export Center', 'Notification Delivery Ledger', 'Observability & Runbooks', 'Release Test Harness', 'Production Gap Workspace'] },
+  { name: "Agent Governance Controls", features: ["Agent Policy Registry","Deployment Approval Board","Tool Risk Matrix","Human Override Console","Agent Audit Evidence","Exception Waivers","Kill Switch Readiness"] },
   {
     "name": "Governance",
     "features": [
@@ -359,7 +564,7 @@ function toPage(feature: (typeof allFeatures)[number]): PageDefinition {
   };
 }
 
-export const pageRegistry: Record<string, PageDefinition> = Object.fromEntries(features.map((feature) => [feature.slug, toPage(feature)]));
+export const pageRegistry: Record<string, PageDefinition> = Object.fromEntries([...features, ...supplementalFeatures, ...productionPlatformFeatures].map((feature) => [feature.slug, toPage(feature)]));
 export const aiFeatureRegistry: Record<string, PageDefinition> = Object.fromEntries(aiFeatures.map((feature) => [feature.slug, toPage(feature)]));
 export const featureContexts: Record<string, FeatureContext> = Object.fromEntries(
   allFeatures.map((feature) => [
