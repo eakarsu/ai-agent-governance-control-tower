@@ -9,7 +9,7 @@ import { DATA_DIR } from '@/lib/storePaths';
 const UPLOAD_DIR = path.join(DATA_DIR, 'uploads');
 
 export async function POST(request: NextRequest) {
-  const session = requireDocumentManager(request);
+  const session = await requireDocumentManager(request);
   if (session instanceof NextResponse) return session;
   const form = await request.formData();
   const file = form.get('file');

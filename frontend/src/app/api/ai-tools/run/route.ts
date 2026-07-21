@@ -47,13 +47,13 @@ function localResponse(toolTitle: string, prompt: string, signals: string[]) {
 }
 
 export async function GET(request: NextRequest) {
-  const session = requireSession(request);
+  const session = await requireSession(request);
   if (session instanceof NextResponse) return session;
   return NextResponse.json({ tools: aiTools });
 }
 
 export async function POST(request: NextRequest) {
-  const session = requireSession(request);
+  const session = await requireSession(request);
   if (session instanceof NextResponse) return session;
 
   const body = await request.json().catch(() => null) as { toolId?: string; input?: string } | null;

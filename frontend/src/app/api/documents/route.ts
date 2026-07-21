@@ -4,13 +4,13 @@ import { getDocuments, saveDocuments } from '@/lib/documentStore';
 import { requireDocumentManager, requireSession } from '@/lib/requestAuth';
 
 export async function GET(request: NextRequest) {
-  const session = requireSession(request);
+  const session = await requireSession(request);
   if (session instanceof NextResponse) return session;
   return NextResponse.json(await getDocuments());
 }
 
 export async function PUT(request: NextRequest) {
-  const session = requireDocumentManager(request);
+  const session = await requireDocumentManager(request);
   if (session instanceof NextResponse) return session;
   const body = await request.json().catch(() => null);
   if (!Array.isArray(body)) {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { AUTH_COOKIE, decodeSession } from '@/lib/auth';
+import { AUTH_COOKIE } from '@/lib/auth';
 
 const protectedPaths = [
   '/dashboard',
@@ -29,8 +29,7 @@ function isProtected(pathname: string) {
 
 export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
-  const user = decodeSession(request.cookies.get(AUTH_COOKIE)?.value);
-  const hasSession = Boolean(user);
+  const hasSession = Boolean(request.cookies.get(AUTH_COOKIE)?.value);
 
   if ((pathname === '/login' || pathname === '/') && hasSession) {
     return NextResponse.redirect(new URL('/dashboard', request.url));

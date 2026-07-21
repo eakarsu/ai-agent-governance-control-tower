@@ -1,0 +1,12 @@
+'use strict';
+const crypto=require('node:crypto');
+const KEY=/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/;const SCOPE=/^[A-Za-z0-9][A-Za-z0-9._:-]{1,127}$/;
+const STATES={draft:['review_pending'],review_pending:['approved','rejected'],approved:['released','retired'],released:['retired'],rejected:['draft'],retired:[]};
+function canonical(v){if(v===null)return'null';if(Array.isArray(v))return`[${v.map(canonical).join(',')}]`;if(typeof v==='object')return`{${Object.keys(v).sort().map(k=>`${JSON.stringify(k)}:${canonical(v[k])}`).join(',')}}`;if(typeof v==='number'&&!Number.isFinite(v))throw new TypeError('non-finite number');return JSON.stringify(v)}
+function digest(v){return crypto.createHash('sha256').update(canonical(v)).digest('hex')}
+function sign(encoded,secret){return crypto.createHmac('sha256',secret).update(encoded).digest('hex')}
+function verifyIdentity(headers,secret,audience,now=Math.floor(Date.now()/1000)){if(typeof secret!=='string'||secret.length<32)return null;const encoded=headers.get('x-governance-identity')||'';const supplied=headers.get('x-governance-signature')||'';const expected=sign(encoded,secret);if(!/^[a-f0-9]{64}$/i.test(supplied)||!crypto.timingSafeEqual(Buffer.from(supplied),Buffer.from(expected)))return null;try{const c=JSON.parse(Buffer.from(encoded,'base64url').toString('utf8'));if(c.aud!==audience||!SCOPE.test(String(c.sub||''))||!SCOPE.test(String(c.tenantId||''))||!SCOPE.test(String(c.role||''))||!Array.isArray(c.permissions)||c.iat>now+60||c.exp<now)return null;return{actor:String(c.sub),tenant:String(c.tenantId),role:String(c.role),permissions:c.permissions.map(String)}}catch{return null}}
+function canTransition(from,to){return Boolean(STATES[from]&&STATES[from].includes(to))}
+function provenanceErrors(items){if(!Array.isArray(items)||!items.length)return['provenance required'];const out=[];items.forEach((x,i)=>{if(!x||!KEY.test(String(x.sourceRef||'')))out.push(`provenance[${i}].sourceRef invalid`);if(!x?.effectiveAt||Number.isNaN(Date.parse(x.effectiveAt)))out.push(`provenance[${i}].effectiveAt invalid`);if(!SCOPE.test(String(x?.jurisdiction||'')))out.push(`provenance[${i}].jurisdiction invalid`);if(x?.sha256&&!/^[a-f0-9]{64}$/i.test(x.sha256))out.push(`provenance[${i}].sha256 invalid`)});return out}
+function retryState(attempt,retryable=true){return!retryable||Number(attempt)>=5?'dead_letter':'failed'}
+module.exports={KEY,STATES,canonical,digest,sign,verifyIdentity,canTransition,provenanceErrors,retryState};

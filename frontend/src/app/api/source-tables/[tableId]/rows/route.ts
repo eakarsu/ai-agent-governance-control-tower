@@ -9,14 +9,14 @@ type RouteContext = {
 };
 
 export async function GET(request: NextRequest, context: RouteContext) {
-  const session = requireSession(request);
+  const session = await requireSession(request);
   if (session instanceof NextResponse) return session;
   const rows = await listSourceTableRows(decodeURIComponent(context.params.tableId));
   return NextResponse.json({ rows });
 }
 
 export async function POST(request: NextRequest, context: RouteContext) {
-  const session = requireSession(request);
+  const session = await requireSession(request);
   if (session instanceof NextResponse) return session;
   const body = await request.json().catch(() => ({}));
   const row = await addSourceTableRow(decodeURIComponent(context.params.tableId), body.values || {});
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 }
 
 export async function PUT(request: NextRequest, context: RouteContext) {
-  const session = requireSession(request);
+  const session = await requireSession(request);
   if (session instanceof NextResponse) return session;
   const body = await request.json().catch(() => ({}));
   const row = await updateSourceTableRow(decodeURIComponent(context.params.tableId), body.rowId || '', body.values || {});
@@ -33,7 +33,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 }
 
 export async function DELETE(request: NextRequest, context: RouteContext) {
-  const session = requireSession(request);
+  const session = await requireSession(request);
   if (session instanceof NextResponse) return session;
   const body = await request.json().catch(() => ({}));
   const ok = await deleteSourceTableRow(decodeURIComponent(context.params.tableId), body.rowId || '');

@@ -3,7 +3,7 @@ import { getFeatureState, resetFeatureState, saveFeatureState } from '@/lib/feat
 import { requireDocumentManager, requireSession } from '@/lib/requestAuth';
 
 export async function GET(request: NextRequest, { params }: { params: { slug: string } }) {
-  const session = requireSession(request);
+  const session = await requireSession(request);
   if (session instanceof NextResponse) return session;
   const surface = await getFeatureState(params.slug);
   if (!surface) {
@@ -14,7 +14,7 @@ export async function GET(request: NextRequest, { params }: { params: { slug: st
 }
 
 export async function PUT(request: NextRequest, { params }: { params: { slug: string } }) {
-  const session = requireDocumentManager(request);
+  const session = await requireDocumentManager(request);
   if (session instanceof NextResponse) return session;
   const body = await request.json().catch(() => null);
   if (!body) {
@@ -26,7 +26,7 @@ export async function PUT(request: NextRequest, { params }: { params: { slug: st
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: { slug: string } }) {
-  const session = requireDocumentManager(request);
+  const session = await requireDocumentManager(request);
   if (session instanceof NextResponse) return session;
   const reset = await resetFeatureState(params.slug);
   if (!reset) {

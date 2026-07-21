@@ -1,20 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
-PORT=5300
-
-if command -v lsof >/dev/null 2>&1; then
-  PIDS="$(lsof -ti tcp:"$PORT" || true)"
-  if [ -n "$PIDS" ]; then
-    echo "Stopping existing process on port $PORT: $(echo "$PIDS" | tr '\n' ' ')"
-    kill $PIDS || true
-    sleep 1
-    PIDS="$(lsof -ti tcp:"$PORT" || true)"
-    if [ -n "$PIDS" ]; then
-      echo "Force stopping process on port $PORT: $(echo "$PIDS" | tr '\n' ' ')"
-      kill -9 $PIDS || true
-    fi
-  fi
-fi
-
-cd "$(dirname "$0")/frontend"
-npm run dev -- -p "$PORT"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ "${NODE_ENV:-development}" = test ] && [ -n "${RUNTIME_PROJECT_SOURCE:-}" ] && [ -d "$RUNTIME_PROJECT_SOURCE" ]; then ROOT_DIR="$RUNTIME_PROJECT_SOURCE";fi
+ENV_FILE="$ROOT_DIR/.env";MIGRATION_DIR="$ROOT_DIR/migrations"
+read_env(){ awk -F= -v key="$1" '$0 !~ /^[[:space:]]*#/ && $1==key {value=substr($0,index($0,"=")+1);gsub(/^[[:space:]]+|[[:space:]]+$/,"",value);gsub(/^["\047]|["\047]$/,"",value);print value;exit}' "$ENV_FILE"; };load_key(){ local key="$1" value;[ -n "${!key-}" ]&&return;[ -f "$ENV_FILE" ]||return;value="$(read_env "$key")";[ -z "$value" ]||export "$key=$value"; }
+for key in DATABASE_URL GOVERNANCE_GATEWAY_SECRET JWT_SECRET ALLOW_SCHEMA_MIGRATION BACKEND_PORT PGSSLROOTCERT;do load_key "$key";done
+if [ "${NODE_ENV:-development}" = test ];then GOVERNANCE_GATEWAY_SECRET="${JWT_SECRET:-}";export GOVERNANCE_GATEWAY_SECRET;fi
+fail(){ printf 'error: %s\n' "$*" >&2;exit 1; };check(){ local secret="${GOVERNANCE_GATEWAY_SECRET:-}";[ -n "${DATABASE_URL:-}" ]||fail "DATABASE_URL is required";[ "${#secret}" -ge 32 ]||fail "GOVERNANCE_GATEWAY_SECRET must contain at least 32 characters";[[ "${BACKEND_PORT:-}" =~ ^[0-9]+$ ]]||fail "BACKEND_PORT must be an explicit integer";[ "$BACKEND_PORT" -ge 1024 ]&&[ "$BACKEND_PORT" -le 65535 ]||fail "BACKEND_PORT must be between 1024 and 65535";command -v node >/dev/null||fail "node is required";printf 'configuration valid\n'; };migrate(){ check;[ "${ALLOW_SCHEMA_MIGRATION:-0}" = 1 ]||fail "set ALLOW_SCHEMA_MIGRATION=1";command -v psql >/dev/null||fail "psql is required";for file in "$MIGRATION_DIR"/*.sql;do psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$file";done; };start(){ check;[ -d "$ROOT_DIR/frontend/node_modules" ]||fail "frontend dependencies are missing; install explicitly";lsof -nP -iTCP:"$BACKEND_PORT" -sTCP:LISTEN >/dev/null 2>&1&&fail "assigned port $BACKEND_PORT is occupied";cd "$ROOT_DIR/frontend";exec npm run dev -- -H 127.0.0.1 -p "$BACKEND_PORT"; };case "${1:-check}" in check)check;;migrate)migrate;;start)start;;*)fail "usage: $0 {check|migrate|start}";;esac

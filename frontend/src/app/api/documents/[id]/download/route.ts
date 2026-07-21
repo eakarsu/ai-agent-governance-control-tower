@@ -8,7 +8,7 @@ import { DATA_DIR } from '@/lib/storePaths';
 const UPLOAD_DIR = path.join(DATA_DIR, 'uploads');
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
-  const session = requireSession(request);
+  const session = await requireSession(request);
   if (session instanceof NextResponse) return session;
   const docs = await getDocuments();
   const doc = docs.find((item) => item.id === params.id);

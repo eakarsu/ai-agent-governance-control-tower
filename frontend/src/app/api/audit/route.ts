@@ -3,7 +3,7 @@ import { getAuditEntries } from '@/lib/auditStore';
 import { requireSession } from '@/lib/requestAuth';
 
 export async function GET(request: NextRequest) {
-  const session = requireSession(request);
+  const session = await requireSession(request);
   if (session instanceof NextResponse) return session;
   return NextResponse.json(await getAuditEntries());
 }

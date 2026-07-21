@@ -4,7 +4,7 @@ import { getEntitySet, saveEntitySet } from '@/lib/entityStore';
 import { requireApprover } from '@/lib/requestAuth';
 
 export async function POST(request: NextRequest, { params }: { params: { slug: string } }) {
-  const session = requireApprover(request);
+  const session = await requireApprover(request);
   if (session instanceof NextResponse) return session;
 
   const body = await request.json().catch(() => null);

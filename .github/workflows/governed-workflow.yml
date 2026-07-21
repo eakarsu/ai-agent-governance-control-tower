@@ -1,0 +1,15 @@
+name: Governed workflow
+on: [push, pull_request]
+permissions: { contents: read }
+jobs:
+  controls:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: node --test governance/governance.test.cjs
+      - run: node --check governance/kernel.cjs
+      - run: node --check governance/domain.cjs
+      - run: bash -n start.sh
+      - run: '! grep -Eiq "DROP (TABLE|DATABASE)|TRUNCATE" migrations/001_governed_workflow.sql'
