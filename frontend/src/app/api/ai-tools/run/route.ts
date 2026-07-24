@@ -2,13 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { aiTools, getAITool } from '@/lib/aiTools';
 import { appendAuditEntry } from '@/lib/auditStore';
 import { requireSession } from '@/lib/requestAuth';
+import { ensurePostgres } from '@/lib/postgres';
+import crypto from 'node:crypto';
 
 async function callConfiguredAI(system: string, prompt: string) {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return null;
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  const baseUrl = process.env.OPENROUTER_BASE_URL;
+  const model = process.env.OPENROUTER_MODEL;
+  if (!apiKey || !model || baseUrl !== 'https://openrouter.ai/api/v1') {
+    throw new Error('OpenRouter configuration is incomplete');
+  }
 
-  const baseUrl = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
-  const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
   const response = await fetch(baseUrl + '/chat/completions', {
     method: 'POST',
     headers: {
@@ -30,20 +34,20 @@ async function callConfiguredAI(system: string, prompt: string) {
   }
 
   const payload = await response.json();
-  return payload?.choices?.[0]?.message?.content as string | undefined;
-}
-
-function localResponse(toolTitle: string, prompt: string, signals: string[]) {
-  const trimmedPrompt = prompt.trim();
-  return [
-    toolTitle + ' response',
-    '',
-    'Summary: ' + trimmedPrompt.slice(0, 260) + (trimmedPrompt.length > 260 ? '...' : ''),
-    '',
-    'Recommended next actions:',
-    ...signals.slice(0, 4).map((signal, index) => String(index + 1) + '. Review ' + signal + ' and assign an owner.'),
-    String(Math.min(signals.length + 1, 5)) + '. Update the audit trail after the review is accepted.',
-  ].join('\n');
+  const content = payload?.choices?.[0]?.message?.content;
+  if (typeof content !== 'string' || !content.trim()) {
+    throw new Error('OpenRouter returned no substantive content');
+  }
+  return {
+    content: content.trim(),
+    model: String(payload.model || model),
+    providerReceipt: {
+      id: String(payload.id || ''),
+      provider: 'openrouter',
+      created: payload.created ?? null,
+    },
+    usage: payload.usage ?? null,
+  };
 }
 
 export async function GET(request: NextRequest) {
@@ -61,24 +65,33 @@ export async function POST(request: NextRequest) {
   const input = body?.input?.trim() || tool.defaultPrompt;
   const system = 'You are ' + tool.title + '. Stay inside this suite workflow. Return concise operational guidance with risks, next actions, and audit notes.';
 
-  let response: string;
-  let provider = 'local-pilot';
   try {
     const aiResponse = await callConfiguredAI(system, input);
-    response = aiResponse || localResponse(tool.title, input, tool.signals);
-    provider = aiResponse ? 'configured-ai' : provider;
-  } catch {
-    response = localResponse(tool.title, input, tool.signals);
-    provider = 'local-fallback';
+    const id = crypto.randomUUID();
+    const pool = await ensurePostgres();
+    await pool.query(
+      `INSERT INTO governance_ai_results
+        (id,user_email,tool_id,prompt,model,provider_receipt,result,usage)
+       VALUES($1,$2,$3,$4,$5,$6::jsonb,$7,$8::jsonb)`,
+      [id, session.email, tool.id, input, aiResponse.model,
+        JSON.stringify(aiResponse.providerReceipt), aiResponse.content,
+        aiResponse.usage ? JSON.stringify(aiResponse.usage) : null],
+    );
+
+    await appendAuditEntry('AI Tools', ((session.firstName + ' ' + session.lastName).trim() || session.email) + ' ran ' + tool.title);
+
+    return NextResponse.json({
+      id,
+      tool,
+      input,
+      response: aiResponse.content,
+      provider: 'openrouter',
+      model: aiResponse.model,
+      usage: aiResponse.usage,
+      createdAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('OpenRouter request failed', error);
+    return NextResponse.json({ error: 'OpenRouter request failed' }, { status: 502 });
   }
-
-  await appendAuditEntry('AI Tools', ((session.firstName + ' ' + session.lastName).trim() || session.email) + ' ran ' + tool.title);
-
-  return NextResponse.json({
-    tool,
-    input,
-    response,
-    provider,
-    createdAt: new Date().toISOString(),
-  });
 }

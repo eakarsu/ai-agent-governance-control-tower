@@ -23,4 +23,17 @@ CREATE TABLE IF NOT EXISTS governance_app_sessions(
   last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS governance_app_sessions_expiry_idx ON governance_app_sessions(expires_at);
+CREATE TABLE IF NOT EXISTS governance_ai_results(
+  id UUID PRIMARY KEY,
+  user_email TEXT NOT NULL REFERENCES governance_app_users(email) ON DELETE RESTRICT,
+  tool_id TEXT NOT NULL,
+  prompt TEXT NOT NULL,
+  model TEXT NOT NULL,
+  provider_receipt JSONB NOT NULL,
+  result TEXT NOT NULL,
+  usage JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS governance_ai_results_user_created_idx
+  ON governance_ai_results(user_email,created_at DESC);
 COMMIT;
