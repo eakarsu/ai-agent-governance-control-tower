@@ -1,6 +1,6 @@
 import { featureCatalog } from '@/lib/unifiedApp';
 
-export type FeatureSurfaceRow = { id: string; item: string; status: string; owner: string; nextStep: string };
+export type FeatureSurfaceRow = { id: string; item: string; status: string; owner: string; nextStep: string; priority: 'Critical' | 'High' | 'Medium' | 'Low'; due: string; approval: 'Not required' | 'Pending' | 'Approved' | 'Rejected'; evidenceSource: string; evidenceVerified: boolean; escalated: boolean; impact: number };
 export type FeatureSurface = { workItems: FeatureSurfaceRow[]; quickActions: string[]; controlChecks: Array<{ id: string; label: string; done: boolean }>; activityLog: Array<{ id: string; message: string; at: string }> };
 function slugFromHref(href: string) { return href.split('/').filter(Boolean).pop() ?? href.replace(/^\//, ''); }
 function ownerFor(category: string) {
@@ -17,11 +17,11 @@ function buildSurface(slug: string, title: string, category: string): FeatureSur
   const owner = ownerFor(category);
   return {
     workItems: [
-      { id: slug + '-surface-1', item: title + ' intake queue', status: 'Open', owner, nextStep: 'Validate source data, owner, deadline, and business impact' },
-      { id: slug + '-surface-2', item: title + ' evidence and policy review', status: 'Review', owner: 'Specialist Reviewer', nextStep: 'Confirm documents, rules, approvals, and exception rationale' },
-      { id: slug + '-surface-3', item: title + ' connector follow-up', status: 'Needs attention', owner: 'Integration Lead', nextStep: 'Check source connector, payload quality, and sync status' },
-      { id: slug + '-surface-4', item: title + ' SLA escalation', status: 'Urgent', owner: 'Operations Manager', nextStep: 'Escalate delayed, high-value, or customer-impacting work' },
-      { id: slug + '-surface-5', item: title + ' audit closeout', status: 'In progress', owner: 'Team Lead', nextStep: 'Capture decision, evidence, approval trail, and export packet' },
+      { id: slug + '-surface-1', item: title + ' intake queue', status: 'Open', owner, nextStep: 'Validate source data, owner, deadline, and business impact', priority: 'Critical', due: '2026-08-15', approval: 'Pending', evidenceSource: title + ' source record', evidenceVerified: true, escalated: false, impact: 30 },
+      { id: slug + '-surface-2', item: title + ' evidence and policy review', status: 'Review', owner: 'Specialist Reviewer', nextStep: 'Confirm documents, rules, approvals, and exception rationale', priority: 'High', due: '2026-08-16', approval: 'Pending', evidenceSource: title + ' source record', evidenceVerified: false, escalated: false, impact: 26 },
+      { id: slug + '-surface-3', item: title + ' connector follow-up', status: 'Needs attention', owner: 'Integration Lead', nextStep: 'Check source connector, payload quality, and sync status', priority: 'High', due: '2026-08-17', approval: 'Pending', evidenceSource: title + ' source record', evidenceVerified: true, escalated: false, impact: 22 },
+      { id: slug + '-surface-4', item: title + ' SLA escalation', status: 'Urgent', owner: 'Operations Manager', nextStep: 'Escalate delayed, high-value, or customer-impacting work', priority: 'Critical', due: '2026-08-15', approval: 'Pending', evidenceSource: title + ' source record', evidenceVerified: false, escalated: true, impact: 18 },
+      { id: slug + '-surface-5', item: title + ' audit closeout', status: 'In progress', owner: 'Team Lead', nextStep: 'Capture decision, evidence, approval trail, and export packet', priority: 'Medium', due: '2026-08-18', approval: 'Approved', evidenceSource: title + ' source record', evidenceVerified: true, escalated: false, impact: 14 },
     ],
     quickActions: ['Create ' + title + ' record', 'Export ' + title + ' list', 'Review ' + title + ' exceptions', 'Assign ' + title + ' owner'],
     controlChecks: [
