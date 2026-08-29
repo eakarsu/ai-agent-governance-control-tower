@@ -469,6 +469,20 @@ const productionPlatformFeatures = [
       { label: 'Exceptions', value: "4", note: 'Need review' },
       { label: 'Due Soon', value: "11", note: 'Next 14 days' },
     ],
+  },
+  {
+    slug: "agent-portfolio-value-lab",
+    title: "Agent Portfolio Value Lab",
+    href: "/agent-portfolio-value-lab",
+    category: "Governance",
+    icon: BarChart3,
+    summary: "Connect agent cost, task volume, human review, quality, incidents, and realized business outcomes without allowing financial metrics to bypass risk controls.",
+    bullets: ["Cost and task attribution","Quality-adjusted value","Risk-gated scale decisions"],
+    metrics: [
+      { label: "Agents Measured", value: "27", note: 'Production and pilot' },
+      { label: 'Value Verified', value: "$1.8M", note: 'Trailing 12 months' },
+      { label: 'Scale Holds', value: "6", note: 'Risk or evidence gaps' },
+    ],
   }
 ] as const;
 
@@ -488,6 +502,7 @@ export const featureCatalog: FeatureDefinition[] = allFeatures.map((feature) => 
 
 export const featureFamilies = [
   { name: 'Production Platform Controls', features: ['Enterprise Identity & Access', 'Connector Operations Center', 'Audit Export Center', 'Notification Delivery Ledger', 'Observability & Runbooks', 'Release Test Harness', 'Production Gap Workspace'] },
+  { name: 'Portfolio Economics', features: ['Agent Portfolio Value Lab'] },
   { name: "Agent Governance Controls", features: ["Agent Policy Registry","Deployment Approval Board","Tool Risk Matrix","Human Override Console","Agent Audit Evidence","Exception Waivers","Kill Switch Readiness"] },
   {
     "name": "Governance",
