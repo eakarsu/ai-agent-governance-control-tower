@@ -63,3 +63,7 @@ Stop adding generated pages; prove one governance/compliance workflow against re
 - `start.sh start` requires an explicit validated `BACKEND_PORT`, refuses an occupied port, and binds the full-stack Next.js runtime only to loopback. It never migrates, seeds, installs, deletes, or terminates another process.
 - Attempt history is preserved in `_runtime_non_suite_repair_shard2k.tsv`: the first attempt is `FAILED / login_failed` because the dependency-free backend was skipped by bootstrap discovery; after declaring its PostgreSQL package and explicit migration command, the retry is `API_VERIFIED / startup_login_session_api`.
 - Final acceptance used PostgreSQL `127.0.0.1:55615` and one Next.js listener at `127.0.0.1:6044`; reserved UI port `6045` remained unused. All 12 governance tests, TypeScript checking, and the Next.js 14 production build passed, and all assigned listeners were released.
+
+## Extension (2026-08-30)
+
+Added normalized OpenAI, Azure OpenAI and AWS Bedrock inventory discovery through the signed governed API action `discover-agents`. It deduplicates snapshots, digest-binds sources, flags risky agents, excludes credentials, and requires human registration review. Live enumeration and runtime telemetry remain open.
