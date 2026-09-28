@@ -11,7 +11,7 @@ import MetricCard from '@/components/unified/MetricCard';
 import UnifiedShell from '@/components/unified/UnifiedShell';
 import { featureContexts, type PageDefinition } from '@/lib/unifiedApp';
 import { sourceCustomFeatureContexts, sourceCustomFeatureEntitiesBySlug, sourceCustomFeatureSurfaceBySlug } from '@/lib/sourceCustomFeatures';
-import { featureSurfaceBySlug, type FeatureSurface } from '@/lib/featureSurfaces';
+import { featureSurfaceBySlug, type FeatureSurface, type FeatureSurfaceRow } from '@/lib/featureSurfaces';
 import { featureEntitiesBySlug } from '@/lib/featureEntities';
 
 const STATUS_OPTIONS = ['Draft', 'Open', 'Queued', 'Review', 'Ready', 'In progress', 'Needs attention', 'Urgent', 'Exception', 'Completed'];
@@ -48,6 +48,9 @@ export default function FeaturePage({ slug, page }: FeaturePageProps) {
   const [saving, setSaving] = useState(false);
   const [newItem, setNewItem] = useState(emptyWorkItem);
   const [showAddItemModal, setShowAddItemModal] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<FeatureSurfaceRow | null>(null);
+  const [itemDraft, setItemDraft] = useState<FeatureSurfaceRow | null>(null);
+  const [editingItem, setEditingItem] = useState(false);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const showAIWorkbench = slug === 'ai-tools' || slug === 'ai-assistant' || page.category.toLowerCase().includes('ai');
@@ -134,19 +137,6 @@ export default function FeaturePage({ slug, page }: FeaturePageProps) {
     }));
   };
 
-  const updateRow = (id: string, field: 'status' | 'owner' | 'nextStep', value: string) => {
-    setSurface((current) => ({
-      ...current,
-      workItems: current.workItems.map((row) => (row.id === id ? { ...row, [field]: value } : row)),
-    }));
-    if (field === 'status') {
-      const target = surface.workItems.find((row) => row.id === id);
-      if (target) {
-        pushActivity(`Updated ${target.item} status to ${value}`);
-      }
-    }
-  };
-
   const toggleCheck = (id: string) => {
     let label = '';
     setSurface((current) => ({
@@ -198,6 +188,31 @@ export default function FeaturePage({ slug, page }: FeaturePageProps) {
     }
   };
 
+  const openWorkItem = (row: FeatureSurfaceRow) => {
+    setSelectedItem(row);
+    setItemDraft({ ...row });
+    setEditingItem(false);
+  };
+
+  const saveWorkItem = () => {
+    if (!itemDraft) return;
+    setSurface((current) => ({
+      ...current,
+      workItems: current.workItems.map((row) => row.id === itemDraft.id ? { ...itemDraft } : row),
+    }));
+    pushActivity(`Updated work item: ${itemDraft.item}`);
+    setSelectedItem({ ...itemDraft });
+    setEditingItem(false);
+  };
+
+  const deleteSelectedWorkItem = () => {
+    if (!selectedItem) return;
+    removeWorkItem(selectedItem.id);
+    setSelectedItem(null);
+    setItemDraft(null);
+    setEditingItem(false);
+  };
+
   const runQuickAction = (action: string) => {
     pushActivity(`Quick action executed: ${action}`);
   };
@@ -222,7 +237,11 @@ export default function FeaturePage({ slug, page }: FeaturePageProps) {
 
       <div className="grid columns-2">
         <div className="card stack">
-          <div className="pill">{page.category}</div>
+          <div className="inline-links">
+            <div className="pill">{page.category}</div>
+            <div className="pill">{showAIWorkbench ? 'AI feature' : 'Non-AI feature'}</div>
+            <div className="pill">PostgreSQL backed</div>
+          </div>
           <h3>Feature Role</h3>
           <div className="muted">{page.summary}</div>
         </div>
@@ -238,67 +257,48 @@ export default function FeaturePage({ slug, page }: FeaturePageProps) {
       </div>
 
       {context ? (
-        <>
-          <div style={{ height: 16 }} />
-
-          <div className="grid columns-2">
-            <div className="card">
-              <h3>Source Ownership</h3>
-              <ul className="feature-list">
-                {context.sourceOwners.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="card">
-              <h3>Operating Queues</h3>
-              <ul className="feature-list">
-                {context.operatingQueues.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
-
-          <div style={{ height: 16 }} />
-
-          <div className="grid columns-2">
-            <div className="card">
-              <h3>Primary Outputs</h3>
-              <ul className="feature-list">
-                {context.outputs.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="card stack">
-              <h3>Related Operations</h3>
-              <div className="inline-links">
-                {context.relatedRoutes.map((item) => (
-                  <Link key={item.href} href={item.href} className="tag-link">
-                    {item.label}
-                  </Link>
-                ))}
+        <div className="feature-section-gap">
+          <details className="card feature-disclosure">
+            <summary>Operating context <span>Ownership, queues, outputs, and related routes</span></summary>
+            <div className="feature-disclosure-body grid columns-2">
+              <div>
+                <h3>Source Ownership</h3>
+                <ul className="feature-list">{context.sourceOwners.map((item) => <li key={item}>{item}</li>)}</ul>
+              </div>
+              <div>
+                <h3>Operating Queues</h3>
+                <ul className="feature-list">{context.operatingQueues.map((item) => <li key={item}>{item}</li>)}</ul>
+              </div>
+              <div>
+                <h3>Primary Outputs</h3>
+                <ul className="feature-list">{context.outputs.map((item) => <li key={item}>{item}</li>)}</ul>
+              </div>
+              <div>
+                <h3>Related Operations</h3>
+                <div className="inline-links">{context.relatedRoutes.map((item) => <Link key={item.href} href={item.href} className="tag-link">{item.label}</Link>)}</div>
               </div>
             </div>
-          </div>
-        </>
+          </details>
+        </div>
       ) : null}
 
       {showAIWorkbench ? (
-        <>
-          <div style={{ height: 16 }} />
-          <AIWorkbench mode={slug === 'ai-assistant' ? 'assistant' : 'tools'} />
-        </>
+        <div className="feature-section-gap">
+          <details className="card feature-disclosure" open={slug === 'ai-tools' || slug === 'ai-assistant'}>
+            <summary>AI workbench <span>Prompts, presets, inputs, and generated reports</span></summary>
+            <div className="feature-disclosure-body"><AIWorkbench mode={slug === 'ai-assistant' ? 'assistant' : 'tools'} /></div>
+          </details>
+        </div>
       ) : null}
 
       {surface ? (
         <>
           <div style={{ height: 16 }} />
 
-          <DecisionEnhancements pageTitle={page.title} surface={surface} setSurface={setSurface} onActivity={pushActivity} />
+          <details className="card feature-disclosure">
+            <summary>Advanced decision controls <span>Scenario metrics, approvals, SLA checks, and evidence lineage</span></summary>
+            <div className="feature-disclosure-body"><DecisionEnhancements pageTitle={page.title} surface={surface} setSurface={setSurface} onActivity={pushActivity} /></div>
+          </details>
 
           <div style={{ height: 16 }} />
 
@@ -336,31 +336,31 @@ export default function FeaturePage({ slug, page }: FeaturePageProps) {
                     <th>Item</th>
                     <th>Status</th>
                     <th>Owner</th>
+                    <th>Priority</th>
+                    <th>Due</th>
                     <th>Next Step</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredItems.map((row) => (
-                    <tr key={row.item}>
-                      <td>{row.item}</td>
-                      <td>
-                        <select value={row.status} onChange={(e) => updateRow(row.id, 'status', e.target.value)}>
-                          {STATUS_OPTIONS.map((status) => (
-                            <option key={status} value={status}>{status}</option>
-                          ))}
-                        </select>
-                      </td>
-                      <td>
-                        <input value={row.owner} onChange={(e) => updateRow(row.id, 'owner', e.target.value)} />
-                      </td>
-                      <td>
-                        <div className="row-action-grid">
-                          <input value={row.nextStep} onChange={(e) => updateRow(row.id, 'nextStep', e.target.value)} />
-                          <button className="button subtle" type="button" onClick={() => removeWorkItem(row.id)}>
-                            Remove
-                          </button>
-                        </div>
-                      </td>
+                    <tr
+                      key={row.id}
+                      className="clickable-data-row"
+                      tabIndex={0}
+                      onClick={() => openWorkItem(row)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          openWorkItem(row);
+                        }
+                      }}
+                    >
+                      <td><strong>{row.item}</strong></td>
+                      <td><span className="status-chip">{row.status}</span></td>
+                      <td>{row.owner}</td>
+                      <td>{row.priority}</td>
+                      <td>{row.due || 'Not set'}</td>
+                      <td>{row.nextStep}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -435,63 +435,120 @@ export default function FeaturePage({ slug, page }: FeaturePageProps) {
                 </div>
               </div>
             ) : null}
-          </div>
 
-          <div style={{ height: 16 }} />
-
-          <div className="grid columns-2">
-            <div className="card">
-              <h3>Quick Actions</h3>
-              <div className="inline-links">
-                {surface.quickActions.map((item) => (
-                  <button key={item} className="tag-link" type="button" onClick={() => runQuickAction(item)}>
-                    {item}
+            {selectedItem && itemDraft ? (
+              <div className="record-modal-backdrop" role="presentation" onClick={() => setSelectedItem(null)}>
+                <div className="record-modal" role="dialog" aria-modal="true" aria-label={'Work item: ' + selectedItem.item} onClick={(event) => event.stopPropagation()}>
+                  <button className="record-modal-close" type="button" aria-label="Close work item dialog" onClick={() => setSelectedItem(null)}>
+                    <X size={18} aria-hidden="true" />
                   </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="card">
-              <h3>Control Checks</h3>
-              <ul className="feature-list">
-                {surface.controlChecks.map((item) => (
-                  <li key={item.id}>
-                    <label className="check-row">
-                      <input type="checkbox" checked={item.done} onChange={() => toggleCheck(item.id)} />
-                      <span>{item.label}</span>
+                  <div className="record-modal-header">
+                    <div>
+                      <span className="eyebrow">{editingItem ? 'Edit Work Item' : 'Work Item Details'}</span>
+                      <h2>{selectedItem.item}</h2>
+                      <p>PostgreSQL-backed operational record with approval, evidence, and SLA controls.</p>
+                    </div>
+                  </div>
+                  <div className="record-form-grid">
+                    <label className="record-form-field span-2">
+                      <span>Item</span>
+                      <input value={itemDraft.item} disabled={!editingItem} onChange={(event) => setItemDraft((current) => current ? { ...current, item: event.target.value } : current)} />
                     </label>
-                  </li>
-                ))}
-              </ul>
-            </div>
+                    <label className="record-form-field">
+                      <span>Status</span>
+                      <select value={itemDraft.status} disabled={!editingItem} onChange={(event) => setItemDraft((current) => current ? { ...current, status: event.target.value } : current)}>
+                        {STATUS_OPTIONS.map((status) => <option key={status}>{status}</option>)}
+                      </select>
+                    </label>
+                    <label className="record-form-field">
+                      <span>Owner</span>
+                      <input value={itemDraft.owner} disabled={!editingItem} onChange={(event) => setItemDraft((current) => current ? { ...current, owner: event.target.value } : current)} />
+                    </label>
+                    <label className="record-form-field">
+                      <span>Priority</span>
+                      <select value={itemDraft.priority} disabled={!editingItem} onChange={(event) => setItemDraft((current) => current ? { ...current, priority: event.target.value as FeatureSurfaceRow['priority'] } : current)}>
+                        {['Critical', 'High', 'Medium', 'Low'].map((value) => <option key={value}>{value}</option>)}
+                      </select>
+                    </label>
+                    <label className="record-form-field">
+                      <span>SLA Due Date</span>
+                      <input type="date" value={itemDraft.due} disabled={!editingItem} onChange={(event) => setItemDraft((current) => current ? { ...current, due: event.target.value } : current)} />
+                    </label>
+                    <label className="record-form-field">
+                      <span>Approval</span>
+                      <select value={itemDraft.approval} disabled={!editingItem} onChange={(event) => setItemDraft((current) => current ? { ...current, approval: event.target.value as FeatureSurfaceRow['approval'] } : current)}>
+                        {['Not required', 'Pending', 'Approved', 'Rejected'].map((value) => <option key={value}>{value}</option>)}
+                      </select>
+                    </label>
+                    <label className="record-form-field">
+                      <span>Impact</span>
+                      <input type="number" min="0" value={itemDraft.impact} disabled={!editingItem} onChange={(event) => setItemDraft((current) => current ? { ...current, impact: Number(event.target.value) } : current)} />
+                    </label>
+                    <label className="record-form-field span-2">
+                      <span>Evidence Source</span>
+                      <input value={itemDraft.evidenceSource} disabled={!editingItem} onChange={(event) => setItemDraft((current) => current ? { ...current, evidenceSource: event.target.value } : current)} />
+                    </label>
+                    <label className="record-form-field span-2">
+                      <span>Next Step</span>
+                      <input value={itemDraft.nextStep} disabled={!editingItem} onChange={(event) => setItemDraft((current) => current ? { ...current, nextStep: event.target.value } : current)} />
+                    </label>
+                    <label className="check-row"><input type="checkbox" checked={itemDraft.evidenceVerified} disabled={!editingItem} onChange={(event) => setItemDraft((current) => current ? { ...current, evidenceVerified: event.target.checked } : current)} /> Evidence verified</label>
+                    <label className="check-row"><input type="checkbox" checked={itemDraft.escalated} disabled={!editingItem} onChange={(event) => setItemDraft((current) => current ? { ...current, escalated: event.target.checked } : current)} /> Escalated</label>
+                  </div>
+                  <div className="record-modal-actions">
+                    <button className="button primary" type="button" onClick={() => editingItem ? saveWorkItem() : setEditingItem(true)}>{editingItem ? 'Save changes' : 'Edit'}</button>
+                    <button className="button danger" type="button" onClick={deleteSelectedWorkItem}>Delete</button>
+                    <button className="button secondary" type="button" onClick={() => setSelectedItem(null)}>Cancel</button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </div>
 
-          <div style={{ height: 16 }} />
-
-          <div className="card">
-            <h3>Recent Activity</h3>
-            <div className="activity-log">
-              {surface.activityLog.map((item) => (
-                <div key={item.id} className="activity-row">
-                  <div className="muted" style={{ fontSize: 12 }}>{item.at}</div>
-                  <div>{item.message}</div>
+          <div className="feature-section-gap">
+            <details className="card feature-disclosure">
+              <summary>Supporting controls and activity <span>Quick actions, control checks, and audit history</span></summary>
+              <div className="feature-disclosure-body stack">
+                <div className="grid columns-2">
+                  <div>
+                    <h3>Quick Actions</h3>
+                    <div className="inline-links">
+                      {surface.quickActions.map((item) => <button key={item} className="tag-link" type="button" onClick={() => runQuickAction(item)}>{item}</button>)}
+                    </div>
+                  </div>
+                  <div>
+                    <h3>Control Checks</h3>
+                    <ul className="feature-list">
+                      {surface.controlChecks.map((item) => <li key={item.id}><label className="check-row"><input type="checkbox" checked={item.done} onChange={() => toggleCheck(item.id)} /><span>{item.label}</span></label></li>)}
+                    </ul>
+                  </div>
                 </div>
-              ))}
-            </div>
+                <div>
+                  <h3>Recent Activity</h3>
+                  <div className="activity-log">
+                    {surface.activityLog.map((item) => <div key={item.id} className="activity-row"><div className="muted" style={{ fontSize: 12 }}>{item.at}</div><div>{item.message}</div></div>)}
+                  </div>
+                </div>
+              </div>
+            </details>
           </div>
 
           {entitySeed ? (
-            <>
-              <div style={{ height: 16 }} />
-              <EntityWorkspace slug={slug} seed={entitySeed} />
-            </>
+            <div className="feature-section-gap">
+              <details className="card feature-disclosure">
+                <summary>Records workspace <span>Browse, add, edit, and approve feature records</span></summary>
+                <div className="feature-disclosure-body"><EntityWorkspace slug={slug} seed={entitySeed} /></div>
+              </details>
+            </div>
           ) : null}
 
           {slug === 'documents' ? (
-            <>
-              <div style={{ height: 16 }} />
-              <DocumentsWorkspace />
-            </>
+            <div className="feature-section-gap">
+              <details className="card feature-disclosure">
+                <summary>Document workspace <span>Upload, inspect, and govern documents</span></summary>
+                <div className="feature-disclosure-body"><DocumentsWorkspace /></div>
+              </details>
+            </div>
           ) : null}
         </>
       ) : null}

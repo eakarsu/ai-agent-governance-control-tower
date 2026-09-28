@@ -78,51 +78,36 @@ export default function DashboardPage() {
 
       <div style={{ height: 16 }} />
 
-      <div className="card">
-        <h3>Source System Coverage</h3>
-        <div className="grid columns-3">
+      <details className="card feature-disclosure">
+        <summary>Source system coverage <span>{sourceSystems.length} connected source groups</span></summary>
+        <div className="feature-disclosure-body grid columns-3">
           {sourceSystems.map((system) => (
-            <div key={system.name} className="card">
+            <div key={system.name}>
               <div className="pill">{system.name}</div>
               <h4 style={{ marginTop: 12 }}>Ownership</h4>
               <div className="muted">{system.ownership}</div>
               <h4 style={{ marginTop: 16 }}>Visible Coverage</h4>
-              <ul className="feature-list">
-                {system.coverage.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
+              <ul className="feature-list">{system.coverage.map((item) => <li key={item}>{item}</li>)}</ul>
             </div>
           ))}
         </div>
-      </div>
+      </details>
 
       <div style={{ height: 16 }} />
 
-      <SourceDashboardActions />
-
-      <div style={{ height: 16 }} />
-
-      <div className="grid columns-2">
-        <NotificationsPanel />
-        <AuditPanel />
-      </div>
-
-      <div style={{ height: 16 }} />
-
-      <div className="card">
-        <h3>Feature Access Map</h3>
-        <div className="grid columns-3">
-          {featureCatalog.map((feature) => (
-            <div key={feature.title} className="card">
-              <div className="pill">{feature.category}</div>
-              <h4 style={{ marginTop: 12 }}>{feature.title}</h4>
-              <div className="muted">{feature.summary}</div>
-              <div style={{ height: 12 }} />
-              <Link className="button" href={feature.href}>Open Feature</Link>
-            </div>
-          ))}
+      <details className="card feature-disclosure">
+        <summary>Operations, notifications, and audit <span>Open when you need operational detail</span></summary>
+        <div className="feature-disclosure-body stack">
+          <SourceDashboardActions />
+          <div className="grid columns-2"><NotificationsPanel /><AuditPanel /></div>
         </div>
+      </details>
+
+      <div style={{ height: 16 }} />
+
+      <div className="card dashboard-feature-link">
+        <div><div className="pill">Feature catalog</div><h3>{featureCatalog.length} governed capabilities</h3><p className="muted">Search and filter the catalog instead of scrolling through every feature on this dashboard.</p></div>
+        <Link className="button primary" href="/features">Browse Features</Link>
       </div>
     </UnifiedShell>
   );

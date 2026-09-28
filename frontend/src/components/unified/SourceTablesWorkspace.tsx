@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Check } from 'lucide-react';
+import { X } from 'lucide-react';
 import { sourceDataTables, type SourceDataTable } from '@/lib/sourceDataTables';
 
 type SourceTableRow = {
@@ -178,8 +178,14 @@ export default function SourceTablesWorkspace() {
   function startEdit(row: SourceTableRow) {
     setAdding(false);
     setEditingId(row.id);
-    setDetailRow(null);
+    setDetailRow(row);
     setDraft({ ...row.values });
+  }
+
+  function closeDetail() {
+    setDetailRow(null);
+    setEditingId('');
+    setDraft({});
   }
 
   function updateDraft(column: string, value: string) {
@@ -230,6 +236,7 @@ export default function SourceTablesWorkspace() {
       await persistRows('PUT', { rowId, values: draft });
       setEditingId('');
       setDraft({});
+      setDetailRow(null);
     } catch {
       setRowsByTable((current) => ({
         ...current,
@@ -237,6 +244,7 @@ export default function SourceTablesWorkspace() {
       }));
       setEditingId('');
       setDraft({});
+      setDetailRow(null);
       setRowStatus('fallback');
     }
   }
@@ -405,10 +413,10 @@ export default function SourceTablesWorkspace() {
           ) : null}
 
           {detailRow && selected ? (
-            <div className="source-row-modal-backdrop" role="presentation" onClick={() => setDetailRow(null)}>
+            <div className="source-row-modal-backdrop" role="presentation" onClick={closeDetail}>
               <div className="source-row-modal" role="dialog" aria-modal="true" aria-label={selected.displayName + ' row details'} onClick={(event) => event.stopPropagation()}>
-                <button className="source-row-modal-close" type="button" aria-label="Close row details" onClick={() => setDetailRow(null)}>
-                  <Check size={18} aria-hidden="true" />
+                <button className="source-row-modal-close" type="button" aria-label="Close row details" onClick={closeDetail}>
+                  <X size={18} aria-hidden="true" />
                 </button>
                 <div className="section-heading">
                   <div>
@@ -421,13 +429,20 @@ export default function SourceTablesWorkspace() {
                   {selectedColumns.map((column) => (
                     <div className="source-row-detail-field" key={column}>
                       <span>{humanizeName(column)}</span>
-                      <strong>{detailRow.values[column] || '-'}</strong>
+                      {editingId === detailRow.id ? (
+                        <input
+                          type={inputTypeForColumn(column)}
+                          value={draft[column] || ''}
+                          onChange={(event) => updateDraft(column, event.target.value)}
+                        />
+                      ) : <strong>{detailRow.values[column] || '-'}</strong>}
                     </div>
                   ))}
                 </div>
                 <div className="row-command-bar modal-actions">
-                  <button className="button primary" type="button" onClick={() => startEdit(detailRow)}>Edit Row</button>
+                  <button className="button primary" type="button" onClick={() => editingId === detailRow.id ? saveEditedRow(detailRow.id) : startEdit(detailRow)}>{editingId === detailRow.id ? 'Save changes' : 'Edit'}</button>
                   <button className="button danger" type="button" onClick={() => deleteRow(detailRow.id)}>Delete Row</button>
+                  <button className="button secondary" type="button" onClick={closeDetail}>Cancel</button>
                 </div>
               </div>
             </div>

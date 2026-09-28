@@ -1,7 +1,7 @@
 import { appendAuditEntry } from '@/lib/auditStore';
 import { featureSurfaceBySlug, type FeatureSurface } from '@/lib/featureSurfaces';
 import { sourceCustomFeatureSurfaceBySlug } from '@/lib/sourceCustomFeatures';
-import { ensureKeyValueSeed, getPgKeyValue, setPgKeyValue } from '@/lib/postgres';
+import { ensureKeyValueSeed, getPgKeyValue, hasSeedMigration, markSeedMigration, setPgKeyValue } from '@/lib/postgres';
 
 type FeatureStateMap = Record<string, FeatureSurface>;
 
@@ -22,6 +22,23 @@ function getSeedState(): FeatureStateMap {
 
 async function ensureStore() {
   await ensureKeyValueSeed('feature_states', getSeedState(), 'feature-state.json');
+  const migrationId = 'feature-work-items-15-v1';
+  if (await hasSeedMigration(migrationId)) return;
+  for (const [slug, seed] of Object.entries(getSeedState())) {
+    const existing = await getPgKeyValue<FeatureSurface>('feature_states', slug);
+    if (!existing) {
+      await setPgKeyValue('feature_states', slug, seed);
+      continue;
+    }
+    if (existing.workItems.length < seed.workItems.length) {
+      const existingIds = new Set(existing.workItems.map((row) => row.id));
+      await setPgKeyValue('feature_states', slug, {
+        ...existing,
+        workItems: [...existing.workItems, ...seed.workItems.filter((row) => !existingIds.has(row.id))].slice(0, seed.workItems.length),
+      });
+    }
+  }
+  await markSeedMigration(migrationId);
 }
 
 export async function getFeatureState(slug: string): Promise<FeatureSurface | null> {

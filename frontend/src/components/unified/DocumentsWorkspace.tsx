@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
+import { X } from 'lucide-react';
 import type { DocumentRecord } from '@/lib/documentStore';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { rolePermissions } from '@/lib/auth';
@@ -15,6 +16,9 @@ export default function DocumentsWorkspace() {
   const [form, setForm] = useState({ name: '', type: '', owner: '' });
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedDocument, setSelectedDocument] = useState<DocumentRecord | null>(null);
+  const [documentDraft, setDocumentDraft] = useState<DocumentRecord | null>(null);
+  const [editingDocument, setEditingDocument] = useState(false);
   const saveTimeout = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -67,18 +71,32 @@ export default function DocumentsWorkspace() {
     setForm({ name: '', type: '', owner: '' });
   };
 
-  const updateItem = (id: string, field: keyof DocumentRecord, value: string) => {
-    if (!canManage) return;
-    setItems((current) =>
-      current.map((item) =>
-        item.id === id ? { ...item, [field]: value, updatedAt: new Date().toLocaleString() } : item,
-      ),
-    );
-  };
-
   const removeItem = (id: string) => {
     if (!canManage) return;
     setItems((current) => current.filter((item) => item.id !== id));
+  };
+
+  const openDocument = (item: DocumentRecord) => {
+    setSelectedDocument(item);
+    setDocumentDraft({ ...item });
+    setEditingDocument(false);
+  };
+
+  const saveDocument = () => {
+    if (!canManage || !documentDraft) return;
+    const updated = { ...documentDraft, updatedAt: new Date().toLocaleString() };
+    setItems((current) => current.map((item) => item.id === updated.id ? updated : item));
+    setSelectedDocument(updated);
+    setDocumentDraft(updated);
+    setEditingDocument(false);
+  };
+
+  const deleteSelectedDocument = () => {
+    if (!canManage || !selectedDocument) return;
+    removeItem(selectedDocument.id);
+    setSelectedDocument(null);
+    setDocumentDraft(null);
+    setEditingDocument(false);
   };
 
   const uploadDocument = async () => {
@@ -137,27 +155,80 @@ export default function DocumentsWorkspace() {
           </thead>
           <tbody>
             {items.map((item) => (
-              <tr key={item.id}>
-                <td><input value={item.name} onChange={(e) => updateItem(item.id, 'name', e.target.value)} disabled={!canManage} /></td>
-                <td><input value={item.type} onChange={(e) => updateItem(item.id, 'type', e.target.value)} disabled={!canManage} /></td>
-                <td><input value={item.owner} onChange={(e) => updateItem(item.id, 'owner', e.target.value)} disabled={!canManage} /></td>
-                <td><input value={item.status} onChange={(e) => updateItem(item.id, 'status', e.target.value)} disabled={!canManage} /></td>
+              <tr
+                key={item.id}
+                className="clickable-data-row"
+                tabIndex={0}
+                onClick={() => openDocument(item)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    openDocument(item);
+                  }
+                }}
+              >
+                <td><strong>{item.name}</strong></td>
+                <td>{item.type}</td>
+                <td>{item.owner}</td>
+                <td><span className="status-chip">{item.status}</span></td>
                 <td>{item.updatedAt}</td>
                 <td>
                   {item.storagePath ? (
-                    <Link className="button subtle" href={`/api/documents/${item.id}/download`}>
+                    <Link className="button subtle" href={`/api/documents/${item.id}/download`} onClick={(event) => event.stopPropagation()}>
                       Download
                     </Link>
                   ) : (
                     <span className="muted">No file</span>
                   )}
                 </td>
-                <td><button className="button subtle" type="button" onClick={() => removeItem(item.id)} disabled={!canManage}>Remove</button></td>
+                <td><button className="button subtle" type="button" onClick={(event) => { event.stopPropagation(); openDocument(item); }}>Open</button></td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {selectedDocument && documentDraft ? (
+        <div className="record-modal-backdrop" role="presentation" onClick={() => setSelectedDocument(null)}>
+          <div className="record-modal" role="dialog" aria-modal="true" aria-label={'Document: ' + selectedDocument.name} onClick={(event) => event.stopPropagation()}>
+            <button className="record-modal-close" type="button" aria-label="Close document dialog" onClick={() => setSelectedDocument(null)}>
+              <X size={18} aria-hidden="true" />
+            </button>
+            <div className="record-modal-header">
+              <div>
+                <span className="eyebrow">{editingDocument ? 'Edit Document' : 'Document Details'}</span>
+                <h2>{selectedDocument.name}</h2>
+                <p>Database-backed document metadata and governed file access.</p>
+              </div>
+            </div>
+            <div className="record-form-grid">
+              <label className="record-form-field span-2">
+                <span>Name</span>
+                <input value={documentDraft.name} disabled={!editingDocument} onChange={(event) => setDocumentDraft((current) => current ? { ...current, name: event.target.value } : current)} />
+              </label>
+              <label className="record-form-field">
+                <span>Type</span>
+                <input value={documentDraft.type} disabled={!editingDocument} onChange={(event) => setDocumentDraft((current) => current ? { ...current, type: event.target.value } : current)} />
+              </label>
+              <label className="record-form-field">
+                <span>Owner</span>
+                <input value={documentDraft.owner} disabled={!editingDocument} onChange={(event) => setDocumentDraft((current) => current ? { ...current, owner: event.target.value } : current)} />
+              </label>
+              <label className="record-form-field span-2">
+                <span>Status</span>
+                <select value={documentDraft.status} disabled={!editingDocument} onChange={(event) => setDocumentDraft((current) => current ? { ...current, status: event.target.value } : current)}>
+                  {['Draft', 'In review', 'Approval pending', 'Ready', 'Archived'].map((status) => <option key={status}>{status}</option>)}
+                </select>
+              </label>
+            </div>
+            <div className="record-modal-actions">
+              <button className="button primary" type="button" disabled={!canManage} onClick={() => editingDocument ? saveDocument() : setEditingDocument(true)}>{editingDocument ? 'Save changes' : 'Edit'}</button>
+              <button className="button danger" type="button" disabled={!canManage} onClick={deleteSelectedDocument}>Delete</button>
+              <button className="button secondary" type="button" onClick={() => setSelectedDocument(null)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

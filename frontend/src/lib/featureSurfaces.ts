@@ -15,14 +15,31 @@ function ownerFor(category: string) {
 }
 function buildSurface(slug: string, title: string, category: string): FeatureSurface {
   const owner = ownerFor(category);
+  const templates: Array<Pick<FeatureSurfaceRow, 'item' | 'status' | 'owner' | 'nextStep' | 'priority' | 'approval' | 'evidenceVerified' | 'escalated' | 'impact'>> = [
+    { item: 'intake queue', status: 'Open', owner, nextStep: 'Validate source data, owner, deadline, and business impact', priority: 'Critical', approval: 'Pending', evidenceVerified: true, escalated: false, impact: 30 },
+    { item: 'evidence and policy review', status: 'Review', owner: 'Specialist Reviewer', nextStep: 'Confirm documents, rules, approvals, and exception rationale', priority: 'High', approval: 'Pending', evidenceVerified: false, escalated: false, impact: 26 },
+    { item: 'connector follow-up', status: 'Needs attention', owner: 'Integration Lead', nextStep: 'Check source connector, payload quality, and sync status', priority: 'High', approval: 'Pending', evidenceVerified: true, escalated: false, impact: 22 },
+    { item: 'SLA escalation', status: 'Urgent', owner: 'Operations Manager', nextStep: 'Escalate delayed, high-value, or customer-impacting work', priority: 'Critical', approval: 'Pending', evidenceVerified: false, escalated: true, impact: 18 },
+    { item: 'audit closeout', status: 'In progress', owner: 'Team Lead', nextStep: 'Capture decision, evidence, approval trail, and export packet', priority: 'Medium', approval: 'Approved', evidenceVerified: true, escalated: false, impact: 14 },
+    { item: 'ownership confirmation', status: 'Open', owner: 'Governance Analyst', nextStep: 'Confirm accountable owner and backup reviewer', priority: 'Medium', approval: 'Not required', evidenceVerified: true, escalated: false, impact: 12 },
+    { item: 'risk exception assessment', status: 'Review', owner: 'Risk Manager', nextStep: 'Document exception scope, compensating controls, and expiry', priority: 'High', approval: 'Pending', evidenceVerified: false, escalated: true, impact: 25 },
+    { item: 'control mapping review', status: 'Queued', owner: 'Control Owner', nextStep: 'Map controls to policy obligations and evidence', priority: 'Medium', approval: 'Pending', evidenceVerified: true, escalated: false, impact: 16 },
+    { item: 'stakeholder response', status: 'In progress', owner: 'Program Manager', nextStep: 'Collect stakeholder feedback and record disposition', priority: 'Low', approval: 'Not required', evidenceVerified: false, escalated: false, impact: 9 },
+    { item: 'data quality validation', status: 'Review', owner: 'Data Steward', nextStep: 'Resolve incomplete fields and verify source freshness', priority: 'High', approval: 'Pending', evidenceVerified: false, escalated: false, impact: 21 },
+    { item: 'approval package', status: 'Approval pending', owner: 'Approval Coordinator', nextStep: 'Route the complete evidence package for signoff', priority: 'High', approval: 'Pending', evidenceVerified: true, escalated: false, impact: 24 },
+    { item: 'monitoring checkpoint', status: 'Ready', owner: 'Monitoring Lead', nextStep: 'Validate thresholds, alerts, and review cadence', priority: 'Medium', approval: 'Not required', evidenceVerified: true, escalated: false, impact: 13 },
+    { item: 'remediation follow-up', status: 'Needs attention', owner: 'Remediation Owner', nextStep: 'Confirm corrective action evidence and target date', priority: 'High', approval: 'Pending', evidenceVerified: false, escalated: true, impact: 23 },
+    { item: 'management signoff', status: 'Approval pending', owner: 'Governance Lead', nextStep: 'Review residual risk and record final decision', priority: 'Critical', approval: 'Pending', evidenceVerified: true, escalated: false, impact: 28 },
+    { item: 'completed control sample', status: 'Completed', owner: 'Quality Reviewer', nextStep: 'Retain as an approved reference case', priority: 'Low', approval: 'Approved', evidenceVerified: true, escalated: false, impact: 8 },
+  ];
   return {
-    workItems: [
-      { id: slug + '-surface-1', item: title + ' intake queue', status: 'Open', owner, nextStep: 'Validate source data, owner, deadline, and business impact', priority: 'Critical', due: '2026-08-15', approval: 'Pending', evidenceSource: title + ' source record', evidenceVerified: true, escalated: false, impact: 30 },
-      { id: slug + '-surface-2', item: title + ' evidence and policy review', status: 'Review', owner: 'Specialist Reviewer', nextStep: 'Confirm documents, rules, approvals, and exception rationale', priority: 'High', due: '2026-08-16', approval: 'Pending', evidenceSource: title + ' source record', evidenceVerified: false, escalated: false, impact: 26 },
-      { id: slug + '-surface-3', item: title + ' connector follow-up', status: 'Needs attention', owner: 'Integration Lead', nextStep: 'Check source connector, payload quality, and sync status', priority: 'High', due: '2026-08-17', approval: 'Pending', evidenceSource: title + ' source record', evidenceVerified: true, escalated: false, impact: 22 },
-      { id: slug + '-surface-4', item: title + ' SLA escalation', status: 'Urgent', owner: 'Operations Manager', nextStep: 'Escalate delayed, high-value, or customer-impacting work', priority: 'Critical', due: '2026-08-15', approval: 'Pending', evidenceSource: title + ' source record', evidenceVerified: false, escalated: true, impact: 18 },
-      { id: slug + '-surface-5', item: title + ' audit closeout', status: 'In progress', owner: 'Team Lead', nextStep: 'Capture decision, evidence, approval trail, and export packet', priority: 'Medium', due: '2026-08-18', approval: 'Approved', evidenceSource: title + ' source record', evidenceVerified: true, escalated: false, impact: 14 },
-    ],
+    workItems: templates.map((template, index) => ({
+      ...template,
+      id: slug + '-surface-' + (index + 1),
+      item: title + ' ' + template.item,
+      due: '2026-09-' + String(2 + index).padStart(2, '0'),
+      evidenceSource: title + ' source record ' + String(index + 1),
+    })),
     quickActions: ['Create ' + title + ' record', 'Export ' + title + ' list', 'Review ' + title + ' exceptions', 'Assign ' + title + ' owner'],
     controlChecks: [
       { id: slug + '-check-1', label: title + ' owner assigned', done: true },

@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import CompactFeatureCatalog from '@/components/unified/CompactFeatureCatalog';
 import UnifiedShell from '@/components/unified/UnifiedShell';
 import { featureCatalog, featureFamilies } from '@/lib/unifiedApp';
 import { sourceCustomFeatureCatalog, sourceCustomFeatureFamilies } from '@/lib/sourceCustomFeatures';
@@ -13,30 +13,14 @@ export default function FeaturesPage() {
       title="All AI Agent Ops Features"
       subtitle="Feature-first navigation collected from source applications and normalized into one suite."
     >
-      <div className="grid columns-3" style={{ marginBottom: 16 }}>
-        {mergedFamilies.map((family) => (
-          <div className="card stack" key={family.name}>
-            <div className="pill">{family.name}</div>
-            <div className="muted">{family.features.join(' · ')}</div>
-          </div>
-        ))}
-      </div>
+      <details className="card feature-disclosure" style={{ marginBottom: 16 }}>
+        <summary>Feature families <span>{mergedFamilies.length} groups</span></summary>
+        <div className="feature-disclosure-body grid columns-3">
+          {mergedFamilies.map((family) => <div key={family.name}><div className="pill">{family.name}</div><div className="muted" style={{ marginTop: 8 }}>{family.features.join(' · ')}</div></div>)}
+        </div>
+      </details>
 
-      <div className="grid columns-3">
-        {mergedCatalog.map((feature) => (
-          <div className="card stack" key={feature.title}>
-            <div className="pill">{feature.category}</div>
-            <h3>{feature.title}</h3>
-            <div className="muted">{feature.summary}</div>
-            <ul className="feature-list">
-              {feature.bullets.map((bullet) => (
-                <li key={bullet}>{bullet}</li>
-              ))}
-            </ul>
-            <Link className="button" href={feature.href}>Open Feature</Link>
-          </div>
-        ))}
-      </div>
+      <CompactFeatureCatalog features={mergedCatalog} />
     </UnifiedShell>
   );
 }

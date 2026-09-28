@@ -78,12 +78,27 @@ export async function ensurePostgres() {
           payload JSONB NOT NULL,
           updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
+        CREATE TABLE IF NOT EXISTS app_seed_migrations (
+          id TEXT PRIMARY KEY,
+          applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
       `);
       initialized = true;
       return current;
     })();
   }
   return initPromise;
+}
+
+export async function hasSeedMigration(id: string) {
+  const current = await ensurePostgres();
+  const { rowCount } = await current.query('SELECT 1 FROM app_seed_migrations WHERE id = $1', [id]);
+  return Boolean(rowCount);
+}
+
+export async function markSeedMigration(id: string) {
+  const current = await ensurePostgres();
+  await current.query('INSERT INTO app_seed_migrations (id) VALUES ($1) ON CONFLICT (id) DO NOTHING', [id]);
 }
 
 export async function ensureKeyValueSeed<T>(
