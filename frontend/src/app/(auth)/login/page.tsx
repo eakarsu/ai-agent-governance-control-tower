@@ -19,16 +19,33 @@ export default function LoginPage() {
 
   const [submitting, setSubmitting] = useState(false);
 
-  const onSubmit = async (event: FormEvent) => {
-    event.preventDefault();
+  const signInWithCredentials = async (nextEmail: string, nextPassword: string) => {
     setSubmitting(true);
-    const ok = await login(email, password);
+    const ok = await login(nextEmail, nextPassword);
     setSubmitting(false);
     if (!ok) {
       setError('Invalid email or password.');
       return;
     }
     router.push('/dashboard');
+  };
+
+  const onSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    await signInWithCredentials(email, password);
+  };
+
+  const onAutoFill = async () => {
+    const demoEmail = process.env.NEXT_PUBLIC_DEMO_EMAIL;
+    const demoPassword = process.env.NEXT_PUBLIC_DEMO_PASSWORD;
+    if (!demoEmail || !demoPassword) {
+      setError('Demo credentials are not configured.');
+      return;
+    }
+    setEmail(demoEmail);
+    setPassword(demoPassword);
+    setError('');
+    await signInWithCredentials(demoEmail, demoPassword);
   };
 
   return (
@@ -51,8 +68,8 @@ export default function LoginPage() {
           </label>
           <button
             type="button"
-            onClick={() => { setEmail(process.env.NEXT_PUBLIC_DEMO_EMAIL || ''); setPassword(process.env.NEXT_PUBLIC_DEMO_PASSWORD || ''); }}
-            disabled={!process.env.NEXT_PUBLIC_DEMO_EMAIL || !process.env.NEXT_PUBLIC_DEMO_PASSWORD}
+            onClick={onAutoFill}
+            disabled={submitting}
             aria-label="Auto Fill Demo Credentials"
             style={{ width: '100%', marginBottom: '12px', padding: '10px 14px', borderRadius: '8px', border: '1px solid currentColor', background: 'transparent', cursor: 'pointer' }}
           >
