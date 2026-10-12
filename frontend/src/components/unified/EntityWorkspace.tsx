@@ -39,6 +39,7 @@ export default function EntityWorkspace({ slug, seed }: Props) {
   const [rowDraft, setRowDraft] = useState<EntityRecord | null>(null);
   const [editingRow, setEditingRow] = useState(false);
   const saveTimeout = useRef<NodeJS.Timeout | null>(null);
+  const dirty = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -70,7 +71,7 @@ export default function EntityWorkspace({ slug, seed }: Props) {
   }, [seedSet, slug]);
 
   useEffect(() => {
-    if (!dataset || !loaded) return;
+    if (!dataset || !loaded || !dirty.current) return;
     if (!canManage) {
       setSaving(false);
       return;
@@ -86,6 +87,7 @@ export default function EntityWorkspace({ slug, seed }: Props) {
       if (!response.ok) {
         setError('Unable to save changes for this role.');
       } else {
+        dirty.current = false;
         setError('');
       }
       setSaving(false);
@@ -106,6 +108,7 @@ export default function EntityWorkspace({ slug, seed }: Props) {
 
   const removeRow = (id: string) => {
     if (!canManage) return;
+    dirty.current = true;
     setDataset((current) =>
       current
         ? {
@@ -124,6 +127,7 @@ export default function EntityWorkspace({ slug, seed }: Props) {
 
   const saveRow = () => {
     if (!canManage || !rowDraft) return;
+    dirty.current = true;
     setDataset((current) => current ? {
       ...current,
       rows: current.rows.map((row) => row.id === rowDraft.id ? { ...rowDraft } : row),
@@ -143,6 +147,7 @@ export default function EntityWorkspace({ slug, seed }: Props) {
   const addRow = () => {
     if (!canManage) return;
     if (!form.name.trim()) return;
+    dirty.current = true;
     const row: EntityRecord = {
       id: `entity-${Date.now()}`,
       name: form.name.trim(),

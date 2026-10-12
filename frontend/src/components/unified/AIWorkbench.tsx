@@ -1,8 +1,9 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { aiTools, type AIToolDefinition } from '@/lib/aiTools';
 import { sourceAIToolFieldsByToolId, type SourceAIToolField } from '@/lib/sourceAIToolFields';
+import JsonReport from '@/components/JsonReport';
 
 type AIWorkbenchProps = {
   mode?: 'assistant' | 'tools';
@@ -64,20 +65,12 @@ function buildFieldValues(fields: SourceAIToolField[]) {
   return Object.fromEntries(fields.map((field) => [field.name, field.defaultValue || '']));
 }
 
-function sampleForField(field: SourceAIToolField, tool: AIToolDefinition) {
-  if (field.options.length) return field.options[0];
-  const lower = field.name.toLowerCase();
-  if (lower.includes('name')) return tool.title.replace(/ AI Tools| Source Workflow| Copilot/g, '');
-  if (lower.includes('language')) return 'English';
-  if (lower.includes('voice')) return 'Professional';
-  if (lower.includes('industry')) return 'General Business';
-  if (lower.includes('duration')) return '300';
-  if (lower.includes('phone') || lower.includes('number') || lower.includes('transfer')) return '+1 555 010 0100';
-  if (lower.includes('query')) return 'What is the best next response for this customer?';
-  if (lower.includes('context')) return 'Customer is asking for help and needs a concise, professional answer.';
-  if (lower.includes('greeting')) return 'Hello, thank you for calling. How can I help you today?';
-  if (lower.includes('prompt') || lower.includes('script')) return 'You are a professional assistant. Be concise, accurate, helpful, and compliant.';
-  return field.defaultValue || 'Sample value';
+function sampleForField(field: SourceAIToolField, tool: AIToolDefinition, profile = 0) {
+  if (field.options.length) return field.options[profile % field.options.length];
+  if (field.type === 'checkbox') return 'false';
+  if (field.name === 'objective') return promptPresets[profile].buildPrompt(tool);
+  if (field.name === 'source_context') return 'Fictional, deidentified planning context for ' + tool.title + '. ' + ['Prepare a status review and identify evidence that is still needed.', 'Review potential risks without asserting unsupported incidents or completed controls.', 'Propose owner follow-up and validation steps; decisions require authorized review.', 'Prepare a staged implementation proposal with testing and approval checkpoints.'][profile];
+  return field.defaultValue || 'Proposed ' + field.label + ' for review; confirm source facts before use.';
 }
 
 function formatInput(prompt: string, fields: SourceAIToolField[], values: Record<string, string>) {
@@ -130,7 +123,7 @@ function readableValue(value: unknown): string {
   if (value == null) return 'Not provided';
   if (typeof value === 'boolean') return value ? 'Yes' : 'No';
   if (typeof value === 'number') return String(value);
-  if (typeof value === 'string') return value.replace(/\*\*/g, '').replace(/`/g, '').trim();
+  if (typeof value === 'string') { const parsed = parseStructuredResponse(value); return typeof parsed === 'string' ? parsed.replace(/\*\*/g, '').replace(/`/g, '').trim() : readableValue(parsed); }
   if (Array.isArray(value)) return value.map(readableValue).join('; ');
   return Object.entries(value as Record<string, unknown>)
     .map(([key, item]) => sectionLabel(key) + ': ' + readableValue(item))
@@ -287,6 +280,8 @@ function AIResultReport({
   const actionCount = sections.reduce((sum, section) => sum + (classifySection(section.title) === 'action' ? Math.max(section.bullets.length, 1) : 0), 0);
   const auditCount = sections.filter((section) => classifySection(section.title) === 'audit').length;
   const copyText = plainResult(result, sections);
+  const [reportView, setReportView] = useState<'report' | 'json'>('report');
+  const structured = parseStructuredResponse(result.response);
 
   const copyReport = async () => {
     await navigator.clipboard?.writeText(copyText);
@@ -312,6 +307,8 @@ function AIResultReport({
         </div>
         <div className="ai-report-actions">
           <div className="ai-report-badge">{result.tool.category}</div>
+          <button className={reportView === 'report' ? 'button primary' : 'button subtle'} type="button" onClick={() => setReportView('report')}>Report</button>
+          <button className={reportView === 'json' ? 'button primary' : 'button subtle'} type="button" onClick={() => setReportView('json')}>Structured JSON</button>
           <button className="button subtle" type="button" onClick={copyReport}>Copy</button>
           <button className="button subtle" type="button" onClick={downloadReport}>Export MD</button>
         </div>
@@ -365,6 +362,11 @@ function AIResultReport({
         <p>{result.input}</p>
       </details>
 
+      {reportView === 'json' ? (
+        <div className="ai-report-structured">
+          <JsonReport data={structured ?? result.response} title={result.tool.title + ' structured AI response'} model={result.provider} />
+        </div>
+      ) : (
       <div className="ai-report-sections pro">
         {sections.map((section, index) => {
           const kind = classifySection(section.title);
@@ -386,6 +388,7 @@ function AIResultReport({
           );
         })}
       </div>
+      )}
     </div>
   );
 }
@@ -447,8 +450,13 @@ export default function AIWorkbench({ mode = 'tools' }: AIWorkbenchProps) {
   const [result, setResult] = useState<AIResult | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState('');
+  const [status, setStatus] = useState('');
+  const request = useRef<AbortController | null>(null);
+  useEffect(() => () => { request.current?.abort(); request.current = null; }, []);
+  const cancelRequest = () => { request.current?.abort(); request.current = null; setRunning(false); setResult(null); setError(''); setStatus('Request canceled. Your inputs are ready to edit.'); };
 
   const selectTool = (tool: AIToolDefinition) => {
+    request.current?.abort(); request.current = null; setRunning(false); setStatus('');
     setSelectedToolId(tool.id);
     setInput(tool.defaultPrompt);
     setFieldValues(buildFieldValues(sourceAIToolFieldsByToolId[tool.id] || []));
@@ -457,7 +465,10 @@ export default function AIWorkbench({ mode = 'tools' }: AIWorkbenchProps) {
   };
 
   const applyPreset = (preset: PresetDefinition) => {
+    const profile = promptPresets.indexOf(preset);
     setInput(preset.buildPrompt(selectedTool));
+    setFieldValues(Object.fromEntries(selectedFields.map(field => [field.name, sampleForField(field, selectedTool, profile)])));
+    setStatus('Every active input is filled, including optional fields. Review this planning example before generating.');
     setResult(null);
     setError('');
   };
@@ -473,8 +484,8 @@ export default function AIWorkbench({ mode = 'tools' }: AIWorkbenchProps) {
     setError('');
   };
 
-  const fillDefaults = () => setFieldValues(buildFieldValues(selectedFields));
-  const fillSamples = () => setFieldValues(Object.fromEntries(selectedFields.map((field) => [field.name, sampleForField(field, selectedTool)])));
+  const fillDefaults = () => { setInput(selectedTool.defaultPrompt); setFieldValues(buildFieldValues(selectedFields)); setResult(null); setError(''); };
+  const fillSamples = () => applyPreset(promptPresets[0]);
   const clearFields = () => setFieldValues(Object.fromEntries(selectedFields.map((field) => [field.name, ''])));
 
   const updateField = (name: string, value: string) => {
@@ -484,21 +495,27 @@ export default function AIWorkbench({ mode = 'tools' }: AIWorkbenchProps) {
   };
 
   const runTool = async () => {
+    if (request.current) return;
+    const missing = selectedFields.find(field => field.required && !String(fieldValues[field.name] || '').trim());
+    if (missing || !input.trim()) { setError(missing ? missing.label + ' is required.' : 'Enter a question or context.'); return; }
+    const controller = new AbortController(); request.current = controller; setStatus(''); setResult(null);
     const requestInput = formatInput(input, selectedFields, fieldValues);
     setRunning(true);
     setError('');
     try {
       const response = await fetch('/api/ai-tools/run', {
-        method: 'POST',
+        method: 'POST', signal: controller.signal,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ toolId: selectedTool.id, input: requestInput, fields: fieldValues }),
       });
-      if (!response.ok) throw new Error('AI tool failed with ' + response.status);
-      setResult(await response.json());
+      const data = await response.json();
+      if (controller.signal.aborted) return;
+      if (!response.ok) throw new Error(data.error || 'The AI report could not complete.');
+      setResult(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'AI tool failed');
+      if (!controller.signal.aborted) setError(err instanceof Error ? err.message : 'AI tool failed');
     } finally {
-      setRunning(false);
+      if (request.current === controller) { request.current = null; setRunning(false); }
     }
   };
 
@@ -511,13 +528,15 @@ export default function AIWorkbench({ mode = 'tools' }: AIWorkbenchProps) {
           <div className="muted">Cards are generated from this suite&apos;s merged capabilities, source systems, and extracted donor AI fields.</div>
         </div>
         <button className="button primary" type="button" onClick={runTool} disabled={running}>
-          {running ? 'Sending...' : 'Send AI Request'}
+          {running ? 'Generating…' : 'Generate with OpenRouter'}
         </button>
+        {running && <button type="button" className="button secondary" onClick={cancelRequest}>Cancel request</button>}
       </div>
+      {status && <p role="status" className="muted">{status}</p>}
 
       <div className="ai-tool-grid">
         {aiTools.map((tool) => (
-          <button key={tool.id} type="button" className={tool.id === selectedTool.id ? 'ai-tool-card active' : 'ai-tool-card'} onClick={() => selectTool(tool)}>
+          <button key={tool.id} data-tool-id={tool.id} type="button" className={tool.id === selectedTool.id ? 'ai-tool-card active' : 'ai-tool-card'} onClick={() => selectTool(tool)}>
             <span className="ai-tool-category">{tool.category}</span>
             <strong>{tool.title}</strong>
             <span>{tool.description}</span>
@@ -532,7 +551,7 @@ export default function AIWorkbench({ mode = 'tools' }: AIWorkbenchProps) {
           <div className="ai-preset-panel">
             <div className="ai-preset-grid">
               {promptPresets.map((preset) => (
-                <button key={preset.id} className="ai-preset-button" type="button" onClick={() => applyPreset(preset)}>
+                <button key={preset.id} className="ai-preset-button" type="button" disabled={running} onClick={() => applyPreset(preset)}>
                   <strong>{preset.label}</strong>
                   <span>{preset.description}</span>
                 </button>
@@ -541,7 +560,7 @@ export default function AIWorkbench({ mode = 'tools' }: AIWorkbenchProps) {
             {selectedTool.signals.length ? (
               <div className="ai-signal-row">
                 {selectedTool.signals.slice(0, 8).map((signal) => (
-                  <button key={signal} className="tag-link" type="button" onClick={() => applySignal(signal)}>
+                  <button key={signal} className="tag-link" type="button" disabled={running} onClick={() => applySignal(signal)}>
                     {signal}
                   </button>
                 ))}
@@ -557,23 +576,21 @@ export default function AIWorkbench({ mode = 'tools' }: AIWorkbenchProps) {
                   <div className="muted">{selectedFields.length} donor fields mapped for this tool.</div>
                 </div>
                 <div className="inline-links">
-                  <button className="button subtle" type="button" onClick={fillDefaults}>Defaults</button>
-                  <button className="button subtle" type="button" onClick={fillSamples}>Fill Samples</button>
-                  <button className="button subtle" type="button" onClick={clearFields}>Clear</button>
+                  <button className="button subtle" type="button" disabled={running} onClick={fillDefaults}>Defaults</button>
+                  <button className="button subtle" type="button" disabled={running} onClick={fillSamples}>Fill Samples</button>
+                  <button className="button subtle" type="button" disabled={running} onClick={clearFields}>Clear</button>
                 </div>
               </div>
-              <div className="ai-dynamic-field-grid">
+              <fieldset disabled={running} className="ai-dynamic-field-grid" style={{border: 0, margin: 0, padding: 0}}>
                 {selectedFields.map((field) => (
                   <DynamicField key={field.name} field={field} value={fieldValues[field.name] || ''} onChange={(value) => updateField(field.name, value)} />
                 ))}
-              </div>
+              </fieldset>
             </div>
           ) : null}
 
-          <textarea value={input} onChange={(event) => setInput(event.target.value)} rows={10} />
-          <button className="button primary ai-send-button" type="button" onClick={runTool} disabled={running}>
-            {running ? 'Sending...' : 'Send AI Request'}
-          </button>
+          <textarea disabled={running} value={input} onChange={(event) => setInput(event.target.value)} rows={10} />
+
         </div>
         <div className="stack">
           <div className="muted" style={{ fontWeight: 700 }}>{selectedTool.outputLabel}</div>

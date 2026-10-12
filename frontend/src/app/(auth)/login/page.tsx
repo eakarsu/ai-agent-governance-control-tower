@@ -1,10 +1,15 @@
 'use client';
+import { useRef as useNativeDemoLoginRef, useState as useNativeDemoLoginState } from 'react';
+
 
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
 
 export default function LoginPage() {
+const nativeDemoAuthRequestLock = useNativeDemoLoginRef(false), demoCredentialRequestLock = useNativeDemoLoginRef(false);
+const [nativeDemoLoginPending, setNativeDemoLoginPending] = useNativeDemoLoginState(false);
+
   const router = useRouter();
   const { ready, user, login } = useAuth();
   const [email, setEmail] = useState('');
@@ -20,6 +25,11 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const signInWithCredentials = async (nextEmail: string, nextPassword: string) => {
+
+if (nativeDemoAuthRequestLock.current) return;
+nativeDemoAuthRequestLock.current = true; setNativeDemoLoginPending(true);
+try {
+
     setSubmitting(true);
     const ok = await login(nextEmail, nextPassword);
     setSubmitting(false);
@@ -28,7 +38,9 @@ export default function LoginPage() {
       return;
     }
     router.push('/dashboard');
-  };
+
+} catch (nativeDemoFailure) { setError('Unable to sign in. Check your credentials or connection and try again.'); } finally { setSubmitting(false); nativeDemoAuthRequestLock.current = false; setNativeDemoLoginPending(false); }
+};
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -68,12 +80,12 @@ export default function LoginPage() {
           </label>
           <button
             type="button"
-            onClick={onAutoFill}
-            disabled={submitting}
-            aria-label="Auto Fill Demo Credentials"
+            onClick={async () => { if (demoCredentialRequestLock.current || nativeDemoAuthRequestLock.current) return; demoCredentialRequestLock.current = true; setNativeDemoLoginPending(true); try { await (onAutoFill)();   } finally { demoCredentialRequestLock.current = false; setNativeDemoLoginPending(false); } }}
+            disabled={nativeDemoLoginPending || Boolean(submitting)}
+            aria-label="Log In as Demo"
             style={{ width: '100%', marginBottom: '12px', padding: '10px 14px', borderRadius: '8px', border: '1px solid currentColor', background: 'transparent', cursor: 'pointer' }}
           >
-            Auto Fill Demo Credentials
+            Log In as Demo
           </button>
           <button className="button primary" type="submit" disabled={submitting}>
             {submitting ? 'Signing in...' : 'Sign in'}
