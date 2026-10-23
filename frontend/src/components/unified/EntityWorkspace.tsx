@@ -5,6 +5,8 @@ import { X } from 'lucide-react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { rolePermissions } from '@/lib/auth';
 import type { EntityRecord, FeatureEntitySet } from '@/lib/featureEntities';
+import { AI_FEATURES } from '@/lib/featurePack';
+import JsonReport from '@/components/JsonReport';
 
 type Props = {
   slug: string;
@@ -33,6 +35,9 @@ export default function EntityWorkspace({ slug, seed }: Props) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [aiResult, setAiResult] = useState<unknown>(null);
+  const [aiLabel, setAiLabel] = useState('');
   const [form, setForm] = useState(emptyRecordForm);
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedRow, setSelectedRow] = useState<EntityRecord | null>(null);
@@ -100,11 +105,17 @@ export default function EntityWorkspace({ slug, seed }: Props) {
   if (!dataset) return null;
 
   const filtered = dataset.rows.filter((row) =>
-    !query ||
+    (!statusFilter || row.status === statusFilter) &&
+    (!query ||
     row.name.toLowerCase().includes(query.toLowerCase()) ||
     row.owner.toLowerCase().includes(query.toLowerCase()) ||
-    (row.status ?? '').toLowerCase().includes(query.toLowerCase()),
+    (row.status ?? '').toLowerCase().includes(query.toLowerCase())),
   );
+  const runAi = async (featureId: string) => {
+    const r = await fetch('/api/ai-features', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ featureId, slug }) });
+    if (!r.ok) { setAiLabel('AI request failed'); return; }
+    const j = await r.json(); setAiResult(j); setAiLabel(j.aiGenerated ? 'AI-generated (' + (j.provider || 'provider') + ')' : 'Deterministic fallback — not AI-generated');
+  };
 
   const removeRow = (id: string) => {
     if (!canManage) return;
@@ -198,6 +209,9 @@ export default function EntityWorkspace({ slug, seed }: Props) {
       <h3>{dataset.title}</h3>
       <div className="toolbar-row">
         <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search records" />
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} aria-label="Filter by status"><option value="">All statuses</option>{[...new Set(dataset.rows.map((r) => r.status))].map((s) => <option key={s} value={s}>{s}</option>)}</select>
+        <a className="button subtle" href={`/api/entities/${slug}/export?format=csv&q=${encodeURIComponent(query)}&status=${encodeURIComponent(statusFilter)}`}>Export CSV</a>
+        <a className="button subtle" href={`/api/entities/${slug}/export?format=json&q=${encodeURIComponent(query)}&status=${encodeURIComponent(statusFilter)}`}>Export JSON</a>
         <span className="save-indicator">{saving ? 'Saving...' : 'Saved'}</span>
         <div className="muted">{canManage ? 'Edit mode' : 'Read-only mode'}</div>
         <button className="button subtle" type="button" onClick={reset} disabled={!canManage}>Reset records</button>
@@ -214,6 +228,9 @@ export default function EntityWorkspace({ slug, seed }: Props) {
         </button>
       </div>
       {error ? <div style={{ color: '#b91c1c', marginTop: 8 }}>{error}</div> : null}
+      <div className="toolbar-row"><span className="muted">AI insights:</span>{AI_FEATURES.map((f) => <button key={f.id} className="button subtle" type="button" onClick={() => runAi(f.id)}>{f.title}</button>)}</div>
+      {aiLabel ? <div className="muted">{aiLabel}</div> : null}
+      {aiResult ? <JsonReport data={aiResult} title="AI insight" /> : null}
 
       <div className="table-wrap">
         <table className="data-table">

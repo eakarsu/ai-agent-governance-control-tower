@@ -10,6 +10,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
+<script src="/feature-pack/feature-pack.js" defer />
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
